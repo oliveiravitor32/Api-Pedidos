@@ -1,5 +1,5 @@
 from pydantic import BaseModel
 
 
-class HealthResponseDTO(BaseModel):
+class HealthResponse(BaseModel):
     status: str
