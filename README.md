@@ -150,7 +150,7 @@ sequenceDiagram
     Srv->>Rep: add(pedido)
     Rep->>DB: INSERT
     DB-->>Rep: id gerado
-    Srv->>DB: COMMIT
+    Srv->>DB: COMMIT (unit of work)
     Srv-->>Ctl: pedido persistido
     Ctl-->>Cli: 201 Created + JSON
 ```
@@ -269,6 +269,8 @@ docker compose exec postgres psql -U pedidos -d pedidos -c "SELECT * FROM pedido
 **Espera ativa pelo banco no startup.** O container da aplicação tenta conectar com retry, e o Compose só o inicia após o `healthcheck` do PostgreSQL passar. O primeiro `docker compose up` funciona sem intervenção manual.
 
 **Criação automática do schema.** As tabelas são criadas no startup a partir das entidades mapeadas, dispensando qualquer passo manual de migração.
+
+**Controle transacional no Service.** O Repository executa as operações de persistência, mas quem abre e confirma a transação é o Service — a sessão do SQLAlchemy atua como *unit of work*. Por isso o diagrama de sequência mostra o `COMMIT` partindo do Service: a decisão sobre o que é atômico pertence ao caso de uso, não ao acesso a dados. Isso permite que um único caso de uso agrupe várias operações de forma atômica, algo necessário quando novos componentes forem distribuídos.
 
 **Tratamento de erros centralizado.** O Service levanta exceções de domínio (`PedidoNaoEncontrado`, `TransicaoStatusInvalida`); tratadores globais no `main.py` as traduzem para 404 e 409. É o que mantém a camada de negócio independente de HTTP.
 
