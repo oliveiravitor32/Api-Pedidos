@@ -1,0 +1,45 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: pedidos-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-pedidos}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pedidos}
+      POSTGRES_DB: ${POSTGRES_DB:-pedidos}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pedidos} -d ${POSTGRES_DB:-pedidos}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - pedidos-network
+    restart: unless-stopped
+
+  pedidos:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pedidos-api
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-pedidos}:${POSTGRES_PASSWORD:-pedidos}@postgres:5432/${POSTGRES_DB:-pedidos}
+      DB_CONNECT_RETRIES: ${DB_CONNECT_RETRIES:-10}
+      DB_CONNECT_RETRY_DELAY: ${DB_CONNECT_RETRY_DELAY:-2}
+      DB_ECHO: ${DB_ECHO:-false}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - pedidos-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  pedidos-network:
+    driver: bridge
